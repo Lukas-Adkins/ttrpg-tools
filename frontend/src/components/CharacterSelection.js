@@ -1,91 +1,64 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
-import { fetchCharacters, deleteCharacter, addCharacter, updateCharacter } from "../firebase/api";
+import {
+  useFetchCharacters,
+  useAddCharacter,
+  useDeleteCharacter,
+  useUpdateCharacter,
+} from "../firebase/api";
 
 const CharacterSelection = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [characters, setCharacters] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [deleteCharacterId, setDeleteCharacterId] = useState(null);
+
+  // Modal state
   const [showModal, setShowModal] = useState(false);
   const [characterName, setCharacterName] = useState("");
   const [characterImageUrl, setCharacterImageUrl] = useState("");
   const [editingCharacter, setEditingCharacter] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!user) return;
+  const userId = user?.uid;
 
-      const characterList = await fetchCharacters(user.uid);
-      setCharacters(characterList);
-      setLoading(false);
-    };
+  // React Query hooks
+  const { data: characters = [], isLoading } = useFetchCharacters({ userId });
+  const addCharacter = useAddCharacter({ userId });
+  const deleteCharacter = useDeleteCharacter({ userId });
+  const updateCharacter = useUpdateCharacter({ userId });
 
-    fetchData();
-  }, [user]);
-
-  const handleDeleteCharacter = async () => {
-    if (!user || !deleteCharacterId) return;
-
-    setDeleteLoading(true);
-
-    try {
-      await deleteCharacter(user.uid, deleteCharacterId);
-      setCharacters((prev) => prev.filter((c) => c.id !== deleteCharacterId));
-      setDeleteCharacterId(null);
-    } catch (error) {
-      console.error("Error deleting character:", error);
-    } finally {
-      setDeleteLoading(false);
-    }
+  const handleDeleteCharacter = async (characterId) => {
+    await deleteCharacter.mutateAsync({ characterId });
   };
 
   const handleCreateCharacter = async () => {
-    if (!user || !characterName.trim()) return;
+    if (!characterName.trim()) return;
 
-    try {
-      const newCharacter = await addCharacter(
-        user.uid,
-        characterName,
-        characterImageUrl.trim() || "/images/default-user.png"
-      );
-      if (newCharacter) {
-        setCharacters((prev) => [...prev, newCharacter]);
-        setShowModal(false);
-        setCharacterName("");
-        setCharacterImageUrl("");
-      }
-    } catch (error) {
-      console.error("Error creating character:", error);
-    }
+    await addCharacter.mutateAsync({
+      characterName,
+      imageUrl: characterImageUrl.trim() || "/images/default-user.png",
+    });
+
+    setShowModal(false);
+    setCharacterName("");
+    setCharacterImageUrl("");
   };
 
   const handleEditCharacter = async () => {
-    if (!user || !editingCharacter || !characterName.trim()) return;
+    if (!editingCharacter || !characterName.trim()) return;
 
-    try {
-      await updateCharacter(user.uid, editingCharacter.id, {
+    await updateCharacter.mutateAsync({
+      characterId: editingCharacter.id,
+      updatedData: {
         name: characterName,
-        imageUrl: characterImageUrl || "/images/default-user.png",
-      });
-      setCharacters((prev) =>
-        prev.map((c) =>
-          c.id === editingCharacter.id
-            ? { ...c, name: characterName, imageUrl: characterImageUrl || "/images/default-user.png" }
-            : c
-        )
-      );
-      setEditingCharacter(null);
-      setShowModal(false);
-      setCharacterName("");
-      setCharacterImageUrl("");
-    } catch (error) {
-      console.error("Error updating character:", error);
-    }
+        imageUrl: characterImageUrl.trim() || "/images/default-user.png",
+      },
+    });
+
+    setShowModal(false);
+    setEditingCharacter(null);
+    setCharacterName("");
+    setCharacterImageUrl("");
   };
 
   const openEditModal = (character) => {
@@ -111,7 +84,7 @@ const CharacterSelection = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center py-8">
       <h1 className="text-4xl font-bold mb-8 text-center">Your Characters</h1>
-      {loading ? (
+      {isLoading ? (
         <div className="flex justify-center items-center h-64">
           {/* Loading Spinner */}
           <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500"></div>
@@ -157,7 +130,7 @@ const CharacterSelection = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setDeleteCharacterId(character.id);
+                    handleDeleteCharacter(character.id);
                   }}
                   className="bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-500 transition"
                 >
@@ -238,53 +211,6 @@ const CharacterSelection = () => {
                       setEditingCharacter(null);
                       setCharacterImageUrl("");
                     }}
-                    className="bg-gray-600 px-4 py-2 rounded-md hover:bg-gray-500 transition text-white"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {deleteCharacterId && (
-          <>
-            <motion.div
-              className="fixed inset-0 bg-black bg-opacity-75"
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              variants={backdropVariants}
-              transition={{ duration: 0.3 }}
-            ></motion.div>
-            <motion.div
-              className="fixed inset-0 flex items-center justify-center"
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              variants={modalVariants}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="bg-gray-800 p-6 rounded-lg text-center shadow-lg">
-                <h2 className="text-xl font-semibold text-white mb-4">
-                  Are you sure you want to delete this character?
-                </h2>
-                <div className="flex justify-center space-x-4">
-                  <button
-                    onClick={handleDeleteCharacter}
-                    disabled={deleteLoading}
-                    className={`bg-red-600 px-4 py-2 rounded-md hover:bg-red-500 transition text-white ${
-                      deleteLoading ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
-                  >
-                    {deleteLoading ? "Deleting..." : "Confirm"}
-                  </button>
-                  <button
-                    onClick={() => setDeleteCharacterId(null)}
                     className="bg-gray-600 px-4 py-2 rounded-md hover:bg-gray-500 transition text-white"
                   >
                     Cancel

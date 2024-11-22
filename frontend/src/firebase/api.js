@@ -1,93 +1,142 @@
-import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  deleteDoc,
+  doc,
+  updateDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { db } from "./firebase";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-export const fetchInventory = async (userId, characterId) => {
-  try {
-    const inventoryRef = collection(db, `users/${userId}/characters/${characterId}/inventory`);
-    const snapshot = await getDocs(inventoryRef);
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-  } catch (error) {
-    console.error("Error fetching inventory:", error);
-    return [];
-  }
+const CACHE_TIME = 60000; // Cache data for 60 seconds
+
+// === Firebase Helpers ===
+
+// Inventory Helpers
+const fetchInventoryData = async ({ userId, characterId }) => {
+  const inventoryRef = collection(db, `users/${userId}/characters/${characterId}/inventory`);
+  const snapshot = await getDocs(inventoryRef);
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
 };
 
-export const addInventoryItem = async (userId, characterId, itemName, quantity) => {
-  try {
-    const inventoryRef = collection(db, `users/${userId}/characters/${characterId}/inventory`);
-    await addDoc(inventoryRef, {
-      itemName,
-      quantity,
-      createdAt: serverTimestamp(),
-    });
-  } catch (error) {
-    console.error("Error adding inventory item:", error);
-  }
+const addInventoryItemData = async ({ userId, characterId, itemName, quantity }) => {
+  const inventoryRef = collection(db, `users/${userId}/characters/${characterId}/inventory`);
+  await addDoc(inventoryRef, { itemName, quantity, createdAt: serverTimestamp() });
 };
 
-export const deleteInventoryItem = async (userId, characterId, itemId) => {
-  try {
-    const itemRef = doc(db, `users/${userId}/characters/${characterId}/inventory/${itemId}`);
-    await deleteDoc(itemRef);
-  } catch (error) {
-    console.error("Error deleting inventory item:", error);
-  }
+const deleteInventoryItemData = async ({ userId, characterId, itemId }) => {
+  const itemRef = doc(db, `users/${userId}/characters/${characterId}/inventory/${itemId}`);
+  await deleteDoc(itemRef);
 };
 
-// Fetch all characters for a specific user
-export const fetchCharacters = async (userId) => {
-  try {
-    const charactersRef = collection(db, `users/${userId}/characters`);
-    const snapshot = await getDocs(charactersRef);
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-  } catch (error) {
-    console.error("Error fetching characters:", error);
-    return [];
-  }
+// Character Helpers
+const fetchCharactersData = async ({ userId }) => {
+  const charactersRef = collection(db, `users/${userId}/characters`);
+  const snapshot = await getDocs(charactersRef);
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
 };
 
-export const addCharacter = async (userId, characterName, imageUrl = "") => {
-  try {
-    const charactersRef = collection(db, `users/${userId}/characters`);
-    const newCharacter = {
-      name: characterName,
-      imageUrl: imageUrl || "/images/default-user.png", // Default image URL
-      createdAt: serverTimestamp(),
-      inventory: [], // Initialize with an empty inventory
-    };
-    const docRef = await addDoc(charactersRef, newCharacter);
-    return { id: docRef.id, ...newCharacter };
-  } catch (error) {
-    console.error("Error adding character:", error);
-    return null;
-  }
+const addCharacterData = async ({ userId, characterName, imageUrl }) => {
+  const charactersRef = collection(db, `users/${userId}/characters`);
+  const newCharacter = {
+    name: characterName,
+    imageUrl: imageUrl || "/images/default-user.png",
+    createdAt: serverTimestamp(),
+    inventory: [],
+  };
+  const docRef = await addDoc(charactersRef, newCharacter);
+  return { id: docRef.id, ...newCharacter };
 };
 
-// Update an existing character's name or image
-export const updateCharacter = async (userId, characterId, updatedData) => {
-  try {
-    const characterRef = doc(db, `users/${userId}/characters/${characterId}`);
-    await updateDoc(characterRef, {
-      ...updatedData,
-      updatedAt: serverTimestamp(), // Optional: track when the character was last updated
-    });
-  } catch (error) {
-    console.error("Error updating character:", error);
-  }
+const updateCharacterData = async ({ userId, characterId, updatedData }) => {
+  const characterRef = doc(db, `users/${userId}/characters/${characterId}`);
+  await updateDoc(characterRef, { ...updatedData, updatedAt: serverTimestamp() });
 };
 
-// Delete a specific character
-export const deleteCharacter = async (userId, characterId) => {
-  try {
-    const characterRef = doc(db, `users/${userId}/characters/${characterId}`);
-    await deleteDoc(characterRef);
-  } catch (error) {
-    console.error("Error deleting character:", error);
-  }
+const deleteCharacterData = async ({ userId, characterId }) => {
+  const characterRef = doc(db, `users/${userId}/characters/${characterId}`);
+  await deleteDoc(characterRef);
+};
+
+// === React Query Hooks ===
+
+// Inventory Hooks
+export const useFetchInventory = ({ userId, characterId }) => {
+  return useQuery({
+    queryKey: ["inventory", userId, characterId],
+    queryFn: () => fetchInventoryData({ userId, characterId }),
+    enabled: !!userId && !!characterId,
+    staleTime: CACHE_TIME,
+  });
+};
+
+export const useAddInventoryItem = ({ userId, characterId }) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemName, quantity }) =>
+      addInventoryItemData({ userId, characterId, itemName, quantity }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["inventory", userId, characterId]); // Refresh cache
+    },
+  });
+};
+
+export const useDeleteInventoryItem = ({ userId, characterId }) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId }) => deleteInventoryItemData({ userId, characterId, itemId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["inventory", userId, characterId]); // Refresh cache
+    },
+  });
+};
+
+// Character Hooks
+export const useFetchCharacters = ({ userId }) => {
+  return useQuery({
+    queryKey: ["characters", userId],
+    queryFn: () => fetchCharactersData({ userId }),
+    enabled: !!userId,
+    staleTime: CACHE_TIME,
+  });
+};
+
+export const useAddCharacter = ({ userId }) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ characterName, imageUrl }) =>
+      addCharacterData({ userId, characterName, imageUrl }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["characters", userId]); // Refresh cache
+    },
+  });
+};
+
+export const useUpdateCharacter = ({ userId }) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ characterId, updatedData }) =>
+      updateCharacterData({ userId, characterId, updatedData }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["characters", userId]); // Refresh cache
+    },
+  });
+};
+
+export const useDeleteCharacter = ({ userId }) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ characterId }) => deleteCharacterData({ userId, characterId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["characters", userId]); // Refresh cache
+    },
+  });
 };

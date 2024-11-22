@@ -1,45 +1,52 @@
-import React, { useState, useEffect } from "react";
-import { fetchInventory, addInventoryItem, deleteInventoryItem } from "../firebase/api";
+import React, { useState } from "react";
+import {
+  useFetchInventory,
+  useAddInventoryItem,
+  useDeleteInventoryItem,
+} from "../firebase/api";
 
 const Inventory = ({ userId, characterId }) => {
-  const [inventory, setInventory] = useState([]);
   const [itemName, setItemName] = useState("");
   const [quantity, setQuantity] = useState(1);
 
-  useEffect(() => {
-    const loadInventory = async () => {
-      const items = await fetchInventory(userId, characterId);
-      setInventory(items);
-    };
-    loadInventory();
-  }, [userId, characterId]);
+  // Use updated React Query hooks
+  const { data: inventory = [], isLoading } = useFetchInventory({ userId, characterId });
+  const addItemMutation = useAddInventoryItem({ userId, characterId });
+  const deleteItemMutation = useDeleteInventoryItem({ userId, characterId });
 
-  const handleAddItem = async () => {
-    if (!itemName) return;
-    await addInventoryItem(userId, characterId, itemName, quantity);
+  const handleAddItem = () => {
+    if (!itemName.trim()) return;
+    addItemMutation.mutate({ itemName, quantity });
     setItemName("");
     setQuantity(1);
-    const items = await fetchInventory(userId, characterId);
-    setInventory(items);
   };
 
-  const handleDeleteItem = async (itemId) => {
-    await deleteInventoryItem(userId, characterId, itemId);
-    const items = await fetchInventory(userId, characterId);
-    setInventory(items);
+  const handleDeleteItem = (itemId) => {
+    deleteItemMutation.mutate({ itemId });
   };
 
   return (
     <div>
       <h1>Inventory</h1>
-      <ul>
-        {inventory.map((item) => (
-          <li key={item.id}>
-            {item.itemName} (x{item.quantity})
-            <button onClick={() => handleDeleteItem(item.id)}>Delete</button>
-          </li>
-        ))}
-      </ul>
+      {isLoading ? (
+        <p>Loading...</p>
+      ) : (
+        <ul>
+          {inventory.map((item) => (
+            <li key={item.id}>
+              {item.itemName} (x{item.quantity})
+              <button
+                onClick={() => handleDeleteItem(item.id)}
+                disabled={deleteItemMutation.isLoading && deleteItemMutation.variables?.itemId === item.id}
+              >
+                {deleteItemMutation.isLoading && deleteItemMutation.variables?.itemId === item.id
+                  ? "Deleting..."
+                  : "Delete"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       <div>
         <input
           type="text"
@@ -53,7 +60,9 @@ const Inventory = ({ userId, characterId }) => {
           value={quantity}
           onChange={(e) => setQuantity(Number(e.target.value))}
         />
-        <button onClick={handleAddItem}>Add Item</button>
+        <button onClick={handleAddItem} disabled={addItemMutation.isLoading}>
+          {addItemMutation.isLoading ? "Adding..." : "Add Item"}
+        </button>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { AnimatePresence, motion } from "framer-motion";
 import LoginPage from "./pages/LoginPage";
@@ -8,19 +9,24 @@ import Characters from "./components/CharacterSelection";
 import NavBar from "./components/NavBar";
 import Footer from "./components/Footer";
 
+// Initialize React Query's QueryClient
+const queryClient = new QueryClient();
+
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <div className="min-h-screen flex flex-col bg-gray-900 text-white">
-          <NavBar />
-          <main className="flex-grow container mx-auto p-4">
-            <AnimatedRoutes />
-          </main>
-          <Footer />
-        </div>
-      </Router>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <Router>
+          <div className="min-h-screen flex flex-col bg-gray-900 text-white">
+            <NavBar />
+            <main className="flex-grow container mx-auto p-4">
+              <AnimatedRoutes />
+            </main>
+            <Footer />
+          </div>
+        </Router>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
@@ -104,9 +110,9 @@ const ProtectedRoute = ({ children }) => {
   // Show a loading spinner while the auth state is being determined
   if (loading) {
     return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
-      <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500"></div>
-    </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500"></div>
+      </div>
     );
   }
 

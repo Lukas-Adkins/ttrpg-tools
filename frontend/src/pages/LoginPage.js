@@ -57,8 +57,8 @@ const LoginPage = () => {
   };
 
   const handleFirebaseError = (error, type) => {
-    if (error.code === "auth/wrong-password") {
-      setError("Invalid password. Please try again.");
+    if (error.code === "auth/invalid-credential") {
+      setError("Invalid email or password. Please try again.");
     } else if (error.code === "auth/user-not-found") {
       setError("No user found with this email.");
     } else if (error.code === "auth/email-already-in-use") {
