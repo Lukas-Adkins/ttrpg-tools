@@ -6,6 +6,8 @@ import {
   doc,
   updateDoc,
   serverTimestamp,
+  query,
+  orderBy
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -37,7 +39,9 @@ const deleteInventoryItemData = async ({ userId, characterId, itemId }) => {
 // Character Helpers
 const fetchCharactersData = async ({ userId }) => {
   const charactersRef = collection(db, `users/${userId}/characters`);
-  const snapshot = await getDocs(charactersRef);
+  // Firestore query with sorting by `createdAt`
+  const q = query(charactersRef, orderBy("createdAt", "asc"));
+  const snapshot = await getDocs(q);
   return snapshot.docs.map((doc) => ({
     id: doc.id,
     ...doc.data(),

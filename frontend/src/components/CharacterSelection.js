@@ -13,13 +13,19 @@ const CharacterSelection = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Modal state
+  // Modal states
   const [showModal, setShowModal] = useState(false);
   const [characterName, setCharacterName] = useState("");
   const [characterImageUrl, setCharacterImageUrl] = useState("");
   const [editingCharacter, setEditingCharacter] = useState(null);
+  const [isCreatingCharacter, setIsCreatingCharacter] = useState(false); // Prevent duplicate submissions
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // Deletion confirmation modal
+  const [characterToDelete, setCharacterToDelete] = useState(null); // Track character for deletion
 
   const userId = user?.uid;
+
+  const MAX_CHARACTERS = 9;
 
   // React Query hooks
   const { data: characters = [], isLoading } = useFetchCharacters({ userId });
@@ -27,21 +33,41 @@ const CharacterSelection = () => {
   const deleteCharacter = useDeleteCharacter({ userId });
   const updateCharacter = useUpdateCharacter({ userId });
 
-  const handleDeleteCharacter = async (characterId) => {
-    await deleteCharacter.mutateAsync({ characterId });
+  const handleDeleteCharacter = async () => {
+    if (!characterToDelete) return;
+
+    await deleteCharacter.mutateAsync({ characterId: characterToDelete.id });
+    setShowDeleteConfirm(false); // Close confirmation modal
+    setCharacterToDelete(null); // Reset characterToDelete state
   };
 
   const handleCreateCharacter = async () => {
     if (!characterName.trim()) return;
 
-    await addCharacter.mutateAsync({
-      characterName,
-      imageUrl: characterImageUrl.trim() || "/images/default-user.png",
-    });
+    // Prevent creating more than MAX_CHARACTERS
+    if (characters.length >= MAX_CHARACTERS) {
+      alert("You can only have a maximum of 9 characters.");
+      return;
+    }
 
-    setShowModal(false);
-    setCharacterName("");
-    setCharacterImageUrl("");
+    if (isCreatingCharacter) return; // Prevent duplicate submissions
+
+    setIsCreatingCharacter(true); // Lock further submissions
+    try {
+      await addCharacter.mutateAsync({
+        characterName,
+        imageUrl: characterImageUrl.trim() || "/images/default-user.png",
+        createdAt: new Date().toISOString(), // Add timestamp here
+      });
+
+      setShowModal(false);
+      setCharacterName("");
+      setCharacterImageUrl("");
+    } catch (error) {
+      console.error("Failed to create character:", error);
+    } finally {
+      setIsCreatingCharacter(false); // Unlock submissions
+    }
   };
 
   const handleEditCharacter = async () => {
@@ -59,6 +85,11 @@ const CharacterSelection = () => {
     setEditingCharacter(null);
     setCharacterName("");
     setCharacterImageUrl("");
+  };
+
+  const openDeleteConfirmModal = (character) => {
+    setCharacterToDelete(character);
+    setShowDeleteConfirm(true);
   };
 
   const openEditModal = (character) => {
@@ -81,22 +112,25 @@ const CharacterSelection = () => {
     exit: { opacity: 0 },
   };
 
+  // Sort characters by creation date
+  const sortedCharacters = characters
+  .slice()
+  .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center py-8">
       <h1 className="text-4xl font-bold mb-8 text-center">Your Characters</h1>
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
-          {/* Loading Spinner */}
           <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500"></div>
         </div>
-      ) : characters.length > 0 ? (
+      ) : sortedCharacters.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl">
-          {characters.map((character) => (
+          {sortedCharacters.map((character) => (
             <div
               key={character.id}
               className="bg-gray-800 p-6 rounded-lg shadow-lg relative flex flex-col items-center group"
             >
-              {/* Character Info */}
               <div
                 onClick={() => navigate(`/inventory/${character.id}`)}
                 className="cursor-pointer flex flex-col items-center w-full"
@@ -115,8 +149,6 @@ const CharacterSelection = () => {
                 </div>
                 <h2 className="text-xl font-semibold text-center">{character.name || "Unnamed Character"}</h2>
               </div>
-
-              {/* Action Buttons (Visible on Hover) */}
               <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 <button
                   onClick={(e) => {
@@ -130,7 +162,7 @@ const CharacterSelection = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDeleteCharacter(character.id);
+                    openDeleteConfirmModal(character);
                   }}
                   className="bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-500 transition"
                 >
@@ -148,14 +180,22 @@ const CharacterSelection = () => {
         </div>
       )}
 
-      {/* Floating Create Character Button */}
       <motion.button
-        onClick={() => setShowModal(true)}
-        className="fixed bottom-8 right-8 bg-blue-600 px-6 py-3 rounded-full shadow-lg hover:bg-blue-500 transition text-white"
+        onClick={() => {
+          if (characters.length >= MAX_CHARACTERS) {
+            alert("You can only have a maximum of 9 characters.");
+            return;
+          }
+          setShowModal(true);
+        }}
+        className={`fixed bottom-8 right-8 px-6 py-3 rounded-full shadow-lg transition text-white ${
+          characters.length >= MAX_CHARACTERS ? "bg-gray-600 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-500"
+        }`}
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
         whileHover={{ scale: 1.1 }}
         transition={{ duration: 0.3 }}
+        disabled={characters.length >= MAX_CHARACTERS}
       >
         + Create Character
       </motion.button>
@@ -219,6 +259,47 @@ const CharacterSelection = () => {
               </div>
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <motion.div
+            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center"
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            variants={backdropVariants}
+            transition={{ duration: 0.3 }}
+          >
+            <motion.div
+              className="bg-gray-800 p-6 rounded-lg text-center shadow-lg"
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              variants={modalVariants}
+              transition={{ duration: 0.3 }}
+            >
+              <h2 className="text-xl font-semibold text-white mb-4">
+                Are you sure you want to delete {characterToDelete?.name}?
+              </h2>
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={handleDeleteCharacter}
+                  className="bg-red-600 px-4 py-2 rounded-md hover:bg-red-500 transition text-white"
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="bg-gray-600 px-4 py-2 rounded-md hover:bg-gray-500 transition text-white"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
