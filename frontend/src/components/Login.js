@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from "react";
 
-const Login = ({ onSignIn, onSignUp, flashMessage, error }) => {
+const Login = ({
+  onSignIn,
+  onSignUp,
+  flashMessage,
+  error,
+  isLocked,
+  lockoutTime,
+}) => {
   const [email, setEmail] = useState(""); // Email input state
   const [password, setPassword] = useState(""); // Password input state
   const [rememberMe, setRememberMe] = useState(false); // "Remember Me" checkbox state
+  const [isSignUp, setIsSignUp] = useState(false); // Toggle for Sign-Up view
 
   const [fadeOutFlash, setFadeOutFlash] = useState(false); // For fading out flash messages
   const [fadeOutError, setFadeOutError] = useState(false); // For fading out error messages
@@ -49,7 +57,7 @@ const Login = ({ onSignIn, onSignUp, flashMessage, error }) => {
 
   const handleKeyPress = (event) => {
     if (event.key === "Enter") {
-      handleSignIn();
+      isSignUp ? handleSignUp() : handleSignIn();
     }
   };
 
@@ -96,8 +104,15 @@ const Login = ({ onSignIn, onSignUp, flashMessage, error }) => {
           )}
         </div>
 
-        <h2 className="text-3xl font-bold text-center text-white">TTRPG Tools Login</h2>
-        <p className="text-center text-gray-400">Enter your credentials to continue</p>
+        <h2 className="text-3xl font-bold text-center text-white">
+          {isSignUp ? "Sign Up" : "Login"}
+        </h2>
+        <p className="text-center text-gray-400">
+          {isSignUp
+            ? "Create your account to get started."
+            : "Enter your credentials to continue"}
+        </p>
+
         <div>
           <label className="block text-sm font-medium text-gray-300">Email</label>
           <input
@@ -106,6 +121,7 @@ const Login = ({ onSignIn, onSignUp, flashMessage, error }) => {
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            disabled={isLocked && !isSignUp} // Disable input if locked and not in sign-up mode
           />
         </div>
         <div>
@@ -116,40 +132,61 @@ const Login = ({ onSignIn, onSignUp, flashMessage, error }) => {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            disabled={isLocked && !isSignUp} // Disable input if locked and not in sign-up mode
           />
         </div>
 
-        <div className="flex items-center mt-4">
-          <input
-            type="checkbox"
-            id="rememberMe"
-            className="mr-2"
-            checked={rememberMe}
-            onChange={(e) => setRememberMe(e.target.checked)}
-          />
-          <label htmlFor="rememberMe" className="text-gray-300 text-sm">
-            Remember Me
-          </label>
-        </div>
+        {!isSignUp && (
+          <div className="flex items-center mt-4">
+            <input
+              type="checkbox"
+              id="rememberMe"
+              className="mr-2"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              disabled={isLocked} // Disable checkbox if locked
+            />
+            <label htmlFor="rememberMe" className="text-gray-300 text-sm">
+              Remember Me
+            </label>
+          </div>
+        )}
 
         <button
-          onClick={handleSignIn}
-          className="w-full px-4 py-2 mt-4 text-white bg-blue-600 rounded-md hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-700"
+          onClick={isSignUp ? handleSignUp : handleSignIn}
+          className={`w-full px-4 py-2 mt-4 rounded-md ${
+            isSignUp ? "bg-green-600 hover:bg-green-500" : "bg-blue-600 hover:bg-blue-500"
+          } text-white focus:outline-none focus:ring-2 focus:ring-blue-700`}
+          disabled={isLocked && !isSignUp} // Only disable if locked and not in sign-up mode
         >
-          Sign In
+          {isSignUp
+            ? "Create Account"
+            : isLocked
+            ? `Locked (${Math.ceil(lockoutTime / 60)} min left)`
+            : "Sign In"}
         </button>
-        <button
-          onClick={handleSignUp}
-          className="w-full px-4 py-2 mt-2 text-blue-600 bg-white rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-700"
-        >
-          Sign Up
-        </button>
-        <p className="text-center text-gray-400 text-sm">
-          Don't have an account? <span className="text-blue-400 cursor-pointer">Sign up</span>
-        </p>
 
-        {/* Bottom Padding to Match Message Container */}
-        <div className="h-12"></div>
+        {isSignUp ? (
+          <p className="text-center text-gray-400 text-sm mt-4">
+            Already have an account?{" "}
+            <span
+              className="text-blue-400 cursor-pointer hover:underline"
+              onClick={() => setIsSignUp(false)}
+            >
+              Log in
+            </span>
+          </p>
+        ) : (
+          <p className="text-center text-gray-400 text-sm mt-4">
+            Don't have an account?{" "}
+            <span
+              className="text-blue-400 cursor-pointer hover:underline"
+              onClick={() => setIsSignUp(true)}
+            >
+              Sign up
+            </span>
+          </p>
+        )}
       </div>
     </div>
   );
