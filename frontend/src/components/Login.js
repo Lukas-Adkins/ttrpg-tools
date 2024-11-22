@@ -1,11 +1,21 @@
 import React, { useState, useEffect } from "react";
 
 const Login = ({ onSignIn, onSignUp, flashMessage, error }) => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState(""); // Email input state
+  const [password, setPassword] = useState(""); // Password input state
+  const [rememberMe, setRememberMe] = useState(false); // "Remember Me" checkbox state
 
   const [fadeOutFlash, setFadeOutFlash] = useState(false); // For fading out flash messages
   const [fadeOutError, setFadeOutError] = useState(false); // For fading out error messages
+
+  // Load saved email from localStorage when the component mounts
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("rememberedEmail");
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   // Handle fading out the flash message
   useEffect(() => {
@@ -37,7 +47,18 @@ const Login = ({ onSignIn, onSignUp, flashMessage, error }) => {
     }
   }, [error]);
 
+  const handleKeyPress = (event) => {
+    if (event.key === "Enter") {
+      handleSignIn();
+    }
+  };
+
   const handleSignIn = () => {
+    if (rememberMe) {
+      localStorage.setItem("rememberedEmail", email); // Save email to localStorage
+    } else {
+      localStorage.removeItem("rememberedEmail"); // Remove email if "Remember Me" is unchecked
+    }
     onSignIn(email, password);
   };
 
@@ -46,7 +67,10 @@ const Login = ({ onSignIn, onSignUp, flashMessage, error }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
+    <div
+      className="min-h-screen flex items-center justify-center bg-gray-900"
+      onKeyPress={handleKeyPress} // Listen for keypress
+    >
       <div className="w-full max-w-md p-8 space-y-4 bg-gray-800 rounded-lg shadow-lg">
         {/* Message Container with Fixed Height */}
         <div className="h-12">
@@ -60,7 +84,6 @@ const Login = ({ onSignIn, onSignUp, flashMessage, error }) => {
               {flashMessage}
             </div>
           )}
-
           {/* Error Message */}
           {error && (
             <div
@@ -95,6 +118,20 @@ const Login = ({ onSignIn, onSignUp, flashMessage, error }) => {
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
+
+        <div className="flex items-center mt-4">
+          <input
+            type="checkbox"
+            id="rememberMe"
+            className="mr-2"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+          />
+          <label htmlFor="rememberMe" className="text-gray-300 text-sm">
+            Remember Me
+          </label>
+        </div>
+
         <button
           onClick={handleSignIn}
           className="w-full px-4 py-2 mt-4 text-white bg-blue-600 rounded-md hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-700"

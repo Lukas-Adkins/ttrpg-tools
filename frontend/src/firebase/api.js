@@ -52,13 +52,12 @@ export const fetchCharacters = async (userId) => {
   }
 };
 
-// Add a new character for a specific user
 export const addCharacter = async (userId, characterName, imageUrl = "") => {
   try {
     const charactersRef = collection(db, `users/${userId}/characters`);
     const newCharacter = {
       name: characterName,
-      imageUrl: imageUrl || "/images/default-user.png", // Placeholder image if no URL provided
+      imageUrl: imageUrl || "/images/default-user.png", // Default image URL
       createdAt: serverTimestamp(),
       inventory: [], // Initialize with an empty inventory
     };

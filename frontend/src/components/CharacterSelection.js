@@ -45,9 +45,13 @@ const CharacterSelection = () => {
 
   const handleCreateCharacter = async () => {
     if (!user || !characterName.trim()) return;
-
+  
     try {
-      const newCharacter = await addCharacter(user.uid, characterName, characterImageUrl || "/images/default-user.png");
+      const newCharacter = await addCharacter(
+        user.uid,
+        characterName,
+        characterImageUrl.trim() || "/images/default-user.png" // Default to fallback image
+      );
       if (newCharacter) {
         setCharacters((prev) => [...prev, newCharacter]); // Add new character to the list
         setShowModal(false); // Close the modal
@@ -191,6 +195,7 @@ const CharacterSelection = () => {
                 onClick={() => {
                   setShowModal(false);
                   setEditingCharacter(null); // Reset editing state
+                  setCharacterImageUrl(""); // Clear the image URL input
                 }}
                 className="bg-gray-600 px-4 py-2 rounded-md hover:bg-gray-500 transition text-white"
               >
