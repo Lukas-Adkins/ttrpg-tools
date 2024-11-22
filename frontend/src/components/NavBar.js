@@ -14,7 +14,11 @@ const NavBar = () => {
     try {
       await signOut(auth);
       setUser(null); // Clear the user state
-      navigate("/"); // Redirect to the home page
+  
+      // Delay navigation to allow the animation to complete
+      setTimeout(() => {
+        navigate("/login"); // Redirect to the login page
+      }, 300); // Match the Framer Motion exit animation duration
     } catch (error) {
       console.error("Logout error:", error.message);
     }
@@ -33,16 +37,16 @@ const NavBar = () => {
             <HomeIcon className="h-8 w-8" />
           </Link>
 
-          {/* Inventory Tracker Link (Visible to All Users) */}
+          {/* Character Tracker Link (Visible to All Users) */}
           <Link
-            to="/inventory"
+            to="/characters"
             className={`text-lg font-semibold px-4 py-2 rounded-lg transition ${
-              isActive("/inventory")
+              isActive("/characters")
                 ? "bg-blue-600 text-white shadow-lg"
                 : "text-gray-300 hover:bg-gray-700"
             }`}
           >
-            Inventory Tracker
+            Characters
           </Link>
         </div>
 

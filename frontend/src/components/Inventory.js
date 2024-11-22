@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { fetchInventory, addInventoryItem, deleteInventoryItem } from "../firebase/firebaseFunctions";
+import { fetchInventory, addInventoryItem, deleteInventoryItem } from "../firebase/api";
 
 const Inventory = ({ userId, characterId }) => {
   const [inventory, setInventory] = useState([]);

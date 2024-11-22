@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { AnimatePresence, motion } from "framer-motion";
 import LoginPage from "./pages/LoginPage";
 import Inventory from "./components/Inventory";
+import Characters from "./components/CharacterSelection";
 import NavBar from "./components/NavBar";
 import Footer from "./components/Footer";
 
@@ -55,6 +56,16 @@ function AnimatedRoutes() {
             </PageTransition>
           }
         />
+        <Route
+          path="/characters"
+          element={
+            <PageTransition>
+              <ProtectedRoute>
+                <Characters />
+              </ProtectedRoute>
+            </PageTransition>
+          }
+        />
       </Routes>
     </AnimatePresence>
   );
@@ -87,14 +98,24 @@ function Home() {
   );
 }
 
-function ProtectedRoute({ children }) {
-  const { user } = useAuth();
+const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useAuth();
 
+  // Show a loading spinner while the auth state is being determined
+  if (loading) {
+    return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
+      <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500"></div>
+    </div>
+    );
+  }
+
+  // Redirect to login page if not logged in
   if (!user) {
     return <Navigate to="/login" state={{ message: "Please log in to access this page." }} />;
   }
 
   return children;
-}
+};
 
 export default App;
