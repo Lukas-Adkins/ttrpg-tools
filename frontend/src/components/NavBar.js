@@ -1,52 +1,71 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { auth } from "../firebase/firebase";
+import { signOut } from "firebase/auth"; // Import signOut function
+import { HomeIcon } from "@heroicons/react/solid"; // Example: Heroicons for Home Icon (requires `@heroicons/react`)
 
 const NavBar = () => {
-  const { user, logout } = useAuth(); // Access user state and logout function from AuthContext
+  const { user, setUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleLogout = () => {
-    logout(navigate); // Use the updated logout function that includes delayed navigation
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setUser(null); // Clear the user state
+      navigate("/"); // Redirect to the home page
+    } catch (error) {
+      console.error("Logout error:", error.message);
+    }
   };
 
+  // Helper function to check if a link is active
+  const isActive = (path) => location.pathname === path;
+
   return (
-    <header className="bg-gray-800 p-4">
+    <header className="bg-gray-800 p-4 shadow-md">
       <div className="container mx-auto flex justify-between items-center">
-        <h1 className="text-2xl font-bold">
-          <Link to="/">TTRPG Tools</Link>
-        </h1>
-        <nav>
-          <ul className="flex space-x-4 items-center">
-            <li>
-              <Link to="/inventory" className="hover:text-blue-400 transition">
-                Inventory Tracker
-              </Link>
-            </li>
-            {user ? (
-              <>
-                <li className="text-gray-300">Welcome, {user.email}</li>
-                <li>
-                  <button
-                    onClick={handleLogout}
-                    className="bg-red-600 px-4 py-2 rounded-md hover:bg-red-500 transition"
-                  >
-                    Logout
-                  </button>
-                </li>
-              </>
-            ) : (
-              <li>
-                <Link
-                  to="/login"
-                  className="bg-blue-600 px-4 py-2 rounded-md hover:bg-blue-500 transition"
-                >
-                  Login
-                </Link>
-              </li>
-            )}
-          </ul>
-        </nav>
+        {/* Left Side: Home Icon + Feature Links */}
+        <div className="flex items-center space-x-6">
+          {/* Home Icon */}
+          <Link to="/" className="text-gray-300 hover:text-blue-500 transition">
+            <HomeIcon className="h-8 w-8" />
+          </Link>
+
+          {/* Inventory Tracker Link (Visible to All Users) */}
+          <Link
+            to="/inventory"
+            className={`text-lg font-semibold px-4 py-2 rounded-lg transition ${
+              isActive("/inventory")
+                ? "bg-blue-600 text-white shadow-lg"
+                : "text-gray-300 hover:bg-gray-700"
+            }`}
+          >
+            Inventory Tracker
+          </Link>
+        </div>
+
+        {/* Right Side: Login/Logout Button */}
+        <div>
+          {user ? (
+            <button
+              onClick={handleLogout}
+              className="bg-red-600 px-4 py-2 rounded-md hover:bg-red-500 text-white transition"
+            >
+              Logout
+            </button>
+          ) : (
+            <Link
+              to="/login"
+              className={`bg-blue-600 px-4 py-2 rounded-md hover:bg-blue-500 transition ${
+                isActive("/login") ? "text-white font-bold" : "text-white"
+              }`}
+            >
+              Login
+            </Link>
+          )}
+        </div>
       </div>
     </header>
   );
