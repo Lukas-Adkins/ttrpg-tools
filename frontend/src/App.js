@@ -53,7 +53,7 @@ function AnimatedRoutes() {
           }
         />
         <Route
-          path="/inventory"
+          path="/inventory/:characterId"
           element={
             <PageTransition>
               <ProtectedRoute>
@@ -94,7 +94,7 @@ function Home() {
   const { user } = useAuth();
   return (
     <div className="text-center">
-      <h2 className="text-3xl font-bold">Welcome to TTRPG Tools</h2>
+      <h2 className="text-4xl font-bold mb-8 text-center">Welcome to TTRPG Tools</h2>
       {user ? (
         <p className="mt-4 text-gray-400">You're logged in as {user.email}.</p>
       ) : (

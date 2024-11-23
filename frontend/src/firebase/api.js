@@ -7,7 +7,7 @@ import {
   updateDoc,
   serverTimestamp,
   query,
-  orderBy
+  orderBy,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -18,22 +18,51 @@ const CACHE_TIME = 60000; // Cache data for 60 seconds
 
 // Inventory Helpers
 const fetchInventoryData = async ({ userId, characterId }) => {
+  console.log("Fetching inventory for:", { userId, characterId });
   const inventoryRef = collection(db, `users/${userId}/characters/${characterId}/inventory`);
-  const snapshot = await getDocs(inventoryRef);
-  return snapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  }));
+  const q = query(inventoryRef, orderBy("createdAt", "asc"));
+
+  try {
+    const snapshot = await getDocs(q);
+    const data = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    console.log("Fetched inventory data:", data);
+    return data;
+  } catch (error) {
+    console.error("Error fetching inventory:", error);
+    throw error;
+  }
 };
 
-const addInventoryItemData = async ({ userId, characterId, itemName, quantity }) => {
+
+const addInventoryItemData = async ({ userId, characterId, itemName, quantity, category }) => {
+  console.log("Adding item:", { userId, characterId, itemName, quantity, category }); // Debugging
   const inventoryRef = collection(db, `users/${userId}/characters/${characterId}/inventory`);
-  await addDoc(inventoryRef, { itemName, quantity, createdAt: serverTimestamp() });
+  const newItem = {
+    itemName,
+    quantity,
+    category, // Add the category to the Firestore document
+    createdAt: serverTimestamp(), // Ensure the createdAt timestamp is stored
+  };
+
+  // Add the document to Firestore and retrieve its ID
+  const docRef = await addDoc(inventoryRef, newItem);
+
+  // Add the document ID as the `itemId` field
+  await updateDoc(docRef, { itemId: docRef.id });
 };
+
 
 const deleteInventoryItemData = async ({ userId, characterId, itemId }) => {
   const itemRef = doc(db, `users/${userId}/characters/${characterId}/inventory/${itemId}`);
   await deleteDoc(itemRef);
+};
+
+const updateInventoryItemData = async ({ userId, characterId, itemId, updatedData }) => {
+  const itemRef = doc(db, `users/${userId}/characters/${characterId}/inventory/${itemId}`);
+  await updateDoc(itemRef, { ...updatedData, updatedAt: serverTimestamp() });
 };
 
 // Character Helpers
@@ -54,7 +83,6 @@ const addCharacterData = async ({ userId, characterName, imageUrl }) => {
     name: characterName,
     imageUrl: imageUrl || "/images/default-user.png",
     createdAt: serverTimestamp(),
-    inventory: [],
   };
   const docRef = await addDoc(charactersRef, newCharacter);
   return { id: docRef.id, ...newCharacter };
@@ -79,16 +107,23 @@ export const useFetchInventory = ({ userId, characterId }) => {
     queryFn: () => fetchInventoryData({ userId, characterId }),
     enabled: !!userId && !!characterId,
     staleTime: CACHE_TIME,
+    onSuccess: (data) => console.log("Fetched inventory data:", data),
+    onError: (error) => console.error("Error fetching inventory:", error),
   });
 };
 
 export const useAddInventoryItem = ({ userId, characterId }) => {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ itemName, quantity }) =>
-      addInventoryItemData({ userId, characterId, itemName, quantity }),
+    mutationFn: ({ itemName, quantity, category }) => 
+      addInventoryItemData({ userId, characterId, itemName, quantity, category }), // Pass category
     onSuccess: () => {
-      queryClient.invalidateQueries(["inventory", userId, characterId]); // Refresh cache
+      console.log("Item added successfully, invalidating inventory query...");
+      queryClient.invalidateQueries(["inventory", userId, characterId]); // Refresh inventory data
+    },
+    onError: (error) => {
+      console.error("Error adding item:", error);
     },
   });
 };
@@ -98,7 +133,26 @@ export const useDeleteInventoryItem = ({ userId, characterId }) => {
   return useMutation({
     mutationFn: ({ itemId }) => deleteInventoryItemData({ userId, characterId, itemId }),
     onSuccess: () => {
-      queryClient.invalidateQueries(["inventory", userId, characterId]); // Refresh cache
+      console.log("Item deleted successfully, invalidating inventory query...");
+      queryClient.invalidateQueries(["inventory", userId, characterId]); // Refresh inventory data
+    },
+    onError: (error) => {
+      console.error("Error deleting item:", error);
+    },
+  });
+};
+
+export const useUpdateInventoryItem = ({ userId, characterId }) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId, updatedData }) =>
+      updateInventoryItemData({ userId, characterId, itemId, updatedData }),
+    onSuccess: () => {
+      console.log("Item updated successfully, invalidating inventory query...");
+      queryClient.invalidateQueries(["inventory", userId, characterId]); // Refresh inventory data
+    },
+    onError: (error) => {
+      console.error("Error updating item:", error);
     },
   });
 };
