@@ -132,7 +132,11 @@ const CharacterSelection = () => {
               className="bg-gray-800 p-6 rounded-lg shadow-lg relative flex flex-col items-center group"
             >
               <div
-                onClick={() => navigate(`/inventory/${character.id}`)}
+                onClick={() =>
+                  navigate(`/inventory/${character.id}`, {
+                    state: { name: character.name }, // Pass the character name
+                  })
+                }
                 className="cursor-pointer flex flex-col items-center w-full"
               >
                 <div className="h-24 w-24 mb-4">

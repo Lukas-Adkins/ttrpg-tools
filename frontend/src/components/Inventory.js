@@ -6,7 +6,7 @@ import {
   useUpdateInventoryItem,
 } from "../firebase/api";
 import { motion, AnimatePresence } from "framer-motion";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation} from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { FaEdit, FaTrash, FaCubes, FaBox } from "react-icons/fa";
 
@@ -181,6 +181,10 @@ const Inventory = () => {
   const { characterId } = useParams();
   const { user } = useAuth();
   const userId = user?.uid;
+  const location = useLocation();
+
+  // Extract character name from state
+  const characterName = location.state?.name || "Character";
 
   const [modalState, dispatchModal] = useReducer(modalReducer, initialModalState);
   const [activeCategory, setActiveCategory] = useState("All");
@@ -221,26 +225,35 @@ const Inventory = () => {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center py-8">
-      <h1 className="text-4xl font-bold mb-8">Inventory</h1>
+      <h1 className="text-4xl font-bold mb-8">{`${characterName}'s Inventory`}</h1>
 
       {isLoading ? (
         <p>Loading...</p>
       ) : (
         <div className="w-full max-w-6xl">
           {/* Currency Section */}
-          <div className="flex flex-wrap items-center bg-gray-800 p-4 rounded-lg mb-6 space-y-4">
-            <h2 className="text-2xl font-semibold flex-shrink-0">Currency</h2>
-            <div className="flex flex-wrap ml-auto space-x-4">
+          <div className="bg-gray-800 p-6 rounded-lg shadow-md mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               {currencies.map((currency, index) => (
-                <CurrencyInput
-                  key={currency.name}
-                  currency={currency.name}
-                  value={currency.value}
-                  onChange={(e) => updateCurrency(index, e.target.value.replace(/\D/, ""))}
-                />
+                <div key={currency.name} className="flex flex-col items-center">
+                  {/* Currency Label */}
+                  <span className="text-sm text-gray-400 font-medium">{currency.name}</span>
+
+                  {/* Input Field */}
+                  <input
+                    type="text"
+                    pattern="[0-9]*"
+                    inputMode="numeric"
+                    value={currency.value}
+                    onChange={(e) => updateCurrency(index, e.target.value.replace(/\D/, ""))}
+                    className="bg-gray-700 px-4 py-2 mt-2 rounded-md text-white text-center border border-gray-600 focus:ring-2 focus:ring-blue-600 focus:outline-none hover:bg-gray-600 transition"
+                  />
+                </div>
               ))}
             </div>
           </div>
+
+
 
           {/* Category Tabs */}
           <div className="flex space-x-4 mb-6 overflow-x-auto">
