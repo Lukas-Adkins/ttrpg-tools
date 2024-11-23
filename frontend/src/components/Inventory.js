@@ -10,8 +10,7 @@ import { useParams, useLocation} from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { FaEdit, FaTrash, FaCubes, FaBox } from "react-icons/fa";
 
-const categories = ["Weapons", "Armor", "Magic Items", "Treasure", "Consumables", "Clothes", "Miscellaneous"];
-const defaultCurrencies = ["Gold", "Silver", "Copper"];
+const categories = ["Weapons", "Armor", "Magic Items", "Currencies", "Treasure", "Consumables", "Clothes", "Miscellaneous"];
 
 // Helper Modal Reducer
 const initialModalState = { isOpen: false, mode: null, item: null };
@@ -27,21 +26,6 @@ const modalReducer = (state, action) => {
       return state;
   }
 };
-
-// Currency Input Component
-const CurrencyInput = ({ currency, value, onChange }) => (
-  <div className="flex flex-col items-center space-y-2">
-    <label className="block text-sm text-gray-300">{currency}</label>
-    <input
-      type="text"
-      pattern="[0-9]*"
-      inputMode="numeric"
-      value={value}
-      onChange={onChange}
-      className="bg-gray-700 px-3 py-2 w-24 rounded-md text-white text-center border border-gray-600 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-    />
-  </div>
-);
 
 const InventoryItem = ({ item, onEdit, onDelete }) => (
   <motion.div
@@ -188,9 +172,6 @@ const Inventory = () => {
 
   const [modalState, dispatchModal] = useReducer(modalReducer, initialModalState);
   const [activeCategory, setActiveCategory] = useState("All");
-  const [currencies, setCurrencies] = useState(
-    defaultCurrencies.map((currency) => ({ name: currency, value: 0 }))
-  );
 
   const { data: inventory = [], isLoading } = useFetchInventory({ userId, characterId });
   const addItemMutation = useAddInventoryItem({ userId, characterId });
@@ -212,12 +193,6 @@ const Inventory = () => {
     deleteItemMutation.mutate({ itemId: id });
   };
 
-  const updateCurrency = (index, value) => {
-    setCurrencies((prev) =>
-      prev.map((curr, i) => (i === index ? { ...curr, value: Number(value) } : curr))
-    );
-  };
-
   const filteredInventory =
     activeCategory === "All"
       ? inventory
@@ -231,29 +206,6 @@ const Inventory = () => {
         <p>Loading...</p>
       ) : (
         <div className="w-full max-w-6xl">
-          {/* Currency Section */}
-          <div className="bg-gray-800 p-6 rounded-lg shadow-md mb-6">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              {currencies.map((currency, index) => (
-                <div key={currency.name} className="flex flex-col items-center">
-                  {/* Currency Label */}
-                  <span className="text-sm text-gray-400 font-medium">{currency.name}</span>
-
-                  {/* Input Field */}
-                  <input
-                    type="text"
-                    pattern="[0-9]*"
-                    inputMode="numeric"
-                    value={currency.value}
-                    onChange={(e) => updateCurrency(index, e.target.value.replace(/\D/, ""))}
-                    className="bg-gray-700 px-4 py-2 mt-2 rounded-md text-white text-center border border-gray-600 focus:ring-2 focus:ring-blue-600 focus:outline-none hover:bg-gray-600 transition"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-
 
           {/* Category Tabs */}
           <div className="flex space-x-4 mb-6 overflow-x-auto">
